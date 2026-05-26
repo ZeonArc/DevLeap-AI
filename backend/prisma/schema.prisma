@@ -1,0 +1,42 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id            String         @id @default(uuid())
+  clerk_id      String         @unique
+  email         String         @unique
+  tier          String         @default("Starter") // "Starter", "Pro Broker"
+  stripe_cus_id String?        @unique
+  created_at    DateTime       @default(now())
+  updated_at    DateTime       @updatedAt
+  profiles      Profile[]
+  pitches       DraftedPitch[]
+}
+
+model Profile {
+  id                    String   @id @default(uuid())
+  user_id               String
+  github_username       String?
+  skills_json           String   // Stored as JSON string
+  architecture_json     String   // Stored as JSON string
+  summary_json          String   // Stored as JSON string
+  created_at            DateTime @default(now())
+  user                  User     @relation(fields: [user_id], references: [id])
+}
+
+model DraftedPitch {
+  id            String   @id @default(uuid())
+  user_id       String
+  job_title     String
+  company       String
+  pitch_message String
+  status        String   @default("pending") // "pending", "accepted", "rejected"
+  created_at    DateTime @default(now())
+  user          User     @relation(fields: [user_id], references: [id])
+}

@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+pydantic
+google-genai
+python-dotenv
+stripe
+asyncpg
+PyJWT
+cryptography
+httpx
