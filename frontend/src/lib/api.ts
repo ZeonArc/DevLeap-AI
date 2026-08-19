@@ -66,87 +66,13 @@ export interface MeResponse {
 
 export interface HealthResponse {
   status: string;
-  gemini_configured: boolean;
+  llm_reachable: boolean;
+  llm_model_loaded: boolean;
+  llm_model: string;
+  search_provider: string;
+  search_configured: boolean;
   db_connected: boolean;
   version: string;
-}
-
-/**
- * Get the current user's dashboard data (profiles, pitches, stats).
- */
-export async function getMe(token: string): Promise<MeResponse> {
-  const res = await fetch(`${API_BASE}/api/v1/me`, {
-    headers: {
-      "Authorization": `Bearer ${token}`
-    },
-  });
-
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: "Unknown error" }));
-    throw new Error(err.detail || `HTTP ${res.status}`);
-  }
-
-  return res.json();
-}
-
-export async function ingestRepository(repoUrl: string, token: string, userId: string): Promise<ProfileResponse> {
-  const res = await fetch(`${API_BASE}/api/v1/ingest`, {
-    method: "POST",
-    headers: { 
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${token}`
-    },
-    body: JSON.stringify({ repo_url: repoUrl, user_id: userId }),
-  });
-
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: "Unknown error" }));
-    throw new Error(err.detail || `HTTP ${res.status}`);
-  }
-
-  return res.json();
-}
-
-export async function quickProfile(githubUsername: string, token: string, userId: string): Promise<ProfileResponse> {
-  const res = await fetch(`${API_BASE}/api/v1/quick-profile`, {
-    method: "POST",
-    headers: { 
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${token}`
-    },
-    body: JSON.stringify({ github_username: githubUsername, user_id: userId }),
-  });
-
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: "Unknown error" }));
-    throw new Error(err.detail || `HTTP ${res.status}`);
-  }
-
-  return res.json();
-}
-
-export async function healthCheck(): Promise<HealthResponse> {
-  const res = await fetch(`${API_BASE}/health`);
-  if (!res.ok) throw new Error(`Health check failed: ${res.status}`);
-  return res.json();
-}
-
-export async function draftPitch(jobUrl: string, token: string): Promise<{ status: string, pitch: DashboardPitch }> {
-  const res = await fetch(`${API_BASE}/api/v1/draft-pitch`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${token}`
-    },
-    body: JSON.stringify({ job_url: jobUrl }),
-  });
-
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: "Unknown error" }));
-    throw new Error(err.detail || `HTTP ${res.status}`);
-  }
-
-  return res.json();
 }
 
 export interface RecommendedJob {
@@ -156,18 +82,116 @@ export interface RecommendedJob {
   match_rationale: string;
 }
 
-export async function findMatchingJobs(token: string): Promise<{ status: string, jobs: RecommendedJob[] }> {
-  const res = await fetch(`${API_BASE}/api/v1/jobs/find`, {
-    method: "GET",
-    headers: {
-      "Authorization": `Bearer ${token}`
-    }
-  });
+/**
+ * Single entry point for every backend call.
+ *
+ * A dead backend surfaces in the browser as a bare "Failed to fetch", which
+ * tells the person nothing actionable. Catching the network-level failure
+ * separately from an HTTP error lets us say which of the two happened.
+ */
+async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+  let res: Response;
 
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: "Unknown error" }));
-    throw new Error(err.detail || `HTTP ${res.status}`);
+  try {
+    res = await fetch(`${API_BASE}${path}`, init);
+  } catch {
+    throw new Error(
+      `Can't reach the DevLeap API at ${API_BASE}. Check that the backend is running, then try again.`
+    );
   }
 
-  return res.json();
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    const detail = body && typeof body.detail === "string" ? body.detail : null;
+
+    if (res.status === 429) {
+      throw new Error(detail || "Rate limit reached. Give it an hour and try again.");
+    }
+    if (res.status === 401 || res.status === 403) {
+      throw new Error(detail || "Your session expired. Sign in again to continue.");
+    }
+    throw new Error(detail || `Request failed (HTTP ${res.status}).`);
+  }
+
+  return res.json() as Promise<T>;
+}
+
+function authHeaders(token: string, json = false): HeadersInit {
+  return json
+    ? { "Content-Type": "application/json", Authorization: `Bearer ${token}` }
+    : { Authorization: `Bearer ${token}` };
+}
+
+/** Current user's dashboard data (profiles, pitches, stats). */
+export function getMe(token: string): Promise<MeResponse> {
+  return request<MeResponse>("/api/v1/me", { headers: authHeaders(token) });
+}
+
+export function ingestRepository(
+  repoUrl: string,
+  token: string,
+  userId: string
+): Promise<ProfileResponse> {
+  return request<ProfileResponse>("/api/v1/ingest", {
+    method: "POST",
+    headers: authHeaders(token, true),
+    body: JSON.stringify({ repo_url: repoUrl, user_id: userId }),
+  });
+}
+
+export function quickProfile(
+  githubUsername: string,
+  token: string,
+  userId: string
+): Promise<ProfileResponse> {
+  return request<ProfileResponse>("/api/v1/quick-profile", {
+    method: "POST",
+    headers: authHeaders(token, true),
+    body: JSON.stringify({ github_username: githubUsername, user_id: userId }),
+  });
+}
+
+export function healthCheck(): Promise<HealthResponse> {
+  return request<HealthResponse>("/health");
+}
+
+export function draftPitch(
+  jobUrl: string,
+  token: string
+): Promise<{ status: string; pitch: DashboardPitch }> {
+  return request("/api/v1/draft-pitch", {
+    method: "POST",
+    headers: authHeaders(token, true),
+    body: JSON.stringify({ job_url: jobUrl }),
+  });
+}
+
+export function findMatchingJobs(
+  token: string
+): Promise<{ status: string; jobs: RecommendedJob[] }> {
+  return request("/api/v1/jobs/find", {
+    method: "GET",
+    headers: authHeaders(token),
+  });
+}
+
+export interface ContactFormValues {
+  firstName: string;
+  lastName: string;
+  email: string;
+  message: string;
+}
+
+/** Public contact form -- no Clerk session required. */
+export function submitContactMessage(values: ContactFormValues): Promise<{ status: string }> {
+  return request("/api/v1/contact", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      first_name: values.firstName,
+      last_name: values.lastName,
+      email: values.email,
+      message: values.message,
+    }),
+  });
 }

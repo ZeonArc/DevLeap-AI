@@ -1,49 +1,67 @@
 "use client";
 
 import Link from "next/link";
+import ThemeSlider from "./ThemeSlider";
+
+const COLUMNS = [
+  {
+    heading: "product",
+    links: [
+      { href: "/pricing", label: "Pricing" },
+      { href: "/profiler", label: "Profiler" },
+      { href: "/broker", label: "Broker" },
+    ],
+  },
+  {
+    heading: "company",
+    links: [
+      { href: "/about", label: "About" },
+      { href: "/contact", label: "Contact" },
+    ],
+  },
+];
 
 export default function Footer() {
   return (
-    <footer className="border-t border-white/[0.04] bg-black/60 backdrop-blur-md py-16 px-6 md:px-10">
-      <div className="max-w-7xl mx-auto">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-8">
-          {/* Left */}
-          <div className="space-y-3">
-            <p className="text-xs font-black tracking-[0.2em] uppercase">DevLeap AI</p>
-            <p className="text-[10px] tracking-[0.3em] text-gray-600 uppercase">
-              Autonomous Recruiter Platform
+    <footer className="border-t border-[var(--line)] mt-auto">
+      <div className="max-w-6xl mx-auto px-6 md:px-8 py-14">
+        <div className="grid gap-10 md:grid-cols-[1.5fr_1fr_1fr_auto]">
+          <div>
+            <p className="font-display text-lg">DevLeap</p>
+            <p className="mt-2 text-sm text-text-dim max-w-[15rem] leading-relaxed">
+              Reads the repository. Cites the line. Waits for your approval.
             </p>
           </div>
 
-          {/* Center links */}
-          <div className="flex gap-8">
-            {[
-              { href: "/about", label: "About" },
-              { href: "/pricing", label: "Services" },
-              { href: "/contact", label: "Contact" },
-            ].map(({ href, label }) => (
-              <Link
-                key={href}
-                href={href}
-                className="hover-button text-[10px] tracking-[0.25em] uppercase font-bold text-gray-500 hover:text-white transition-colors duration-300"
-              >
-                {label}
-              </Link>
-            ))}
-          </div>
+          {COLUMNS.map((col) => (
+            <nav key={col.heading} aria-label={col.heading}>
+              <p className="eyebrow mb-4">{col.heading}</p>
+              <ul className="space-y-2.5">
+                {col.links.map((link) => (
+                  <li key={link.href}>
+                    <Link
+                      href={link.href}
+                      className="text-sm text-text-dim hover:text-text transition-colors"
+                    >
+                      {link.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+          ))}
 
-          {/* Right */}
-          <div className="flex items-center gap-6">
-            <span className="text-[10px] tracking-[0.2em] text-gray-600 uppercase">
-              © {new Date().getFullYear()}
-            </span>
-            <button
-              className="hover-button text-[10px] tracking-[0.25em] uppercase font-bold text-gray-500 hover:text-primary transition-colors"
-              onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-            >
-              ↑ Top
-            </button>
+          <div>
+            <p className="eyebrow mb-4">theme</p>
+            <ThemeSlider showLabel />
           </div>
+        </div>
+
+        <div className="hairline my-10" />
+
+        <div className="flex flex-col sm:flex-row justify-between gap-3 font-mono text-[0.7rem] text-text-faint">
+          <span>© {new Date().getFullYear()} DevLeap AI</span>
+          <span>Drafts only. Nothing sends without you.</span>
         </div>
       </div>
     </footer>

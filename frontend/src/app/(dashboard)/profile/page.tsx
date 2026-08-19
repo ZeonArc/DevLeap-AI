@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import gsap from "gsap";
 import { useAuth } from "@clerk/nextjs";
 import PortfolioRenderer, { DeveloperProfile } from "@/components/PortfolioRenderer";
 import { getMe, DashboardProfile } from "@/lib/api";
+import { useScrollReveal } from "@/lib/useScrollReveal";
 
 export default function Profile() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -29,16 +29,7 @@ export default function Profile() {
     load();
   }, [getToken]);
 
-  useEffect(() => {
-    if (!containerRef.current || loading) return;
-    const ctx = gsap.context(() => {
-      gsap.fromTo(".anim-up",
-        { opacity: 0, y: 30 },
-        { opacity: 1, y: 0, duration: 0.8, stagger: 0.1, ease: "power2.out" }
-      );
-    }, containerRef);
-    return () => ctx.revert();
-  }, [loading]);
+  useScrollReveal(containerRef, [loading]);
 
   const parsedProfile: DeveloperProfile | null = (() => {
     if (!profiles.length) return null;
@@ -55,37 +46,36 @@ export default function Profile() {
   })();
 
   return (
-    <div ref={containerRef} className="space-y-8 animate-fade-in pb-12 max-w-5xl mx-auto">
-      <div className="border-b border-white/10 pb-6 anim-up">
-        <h1 className="text-3xl font-black uppercase tracking-widest text-white mb-2">My Profile</h1>
-        <p className="text-xs uppercase tracking-[0.2em] text-gray-500 font-bold">Extracted Developer Matrix</p>
+    <div ref={containerRef} className="space-y-10 pb-12 max-w-4xl">
+      <div className="reveal-up border-b border-[var(--line)] pb-6">
+        <p className="eyebrow mb-2">profile</p>
+        <h1 className="font-display text-2xl md:text-3xl">Your extracted profile</h1>
       </div>
 
       {loading && (
         <div className="flex items-center justify-center py-20">
-          <span className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+          <span className="w-5 h-5 border-2 border-signal border-t-transparent rounded-full animate-spin" />
         </div>
       )}
 
       {!loading && profiles.length === 0 && (
-        <div className="anim-up glass-panel p-12 rounded-2xl border border-white/5 text-center">
-          <p className="text-gray-500 text-sm mb-4">No profiles generated yet. Head to the Profiler to ingest a repository.</p>
+        <div className="reveal-up panel p-12 text-center">
+          <p className="text-sm text-muted">No profiles generated yet. Head to the Profiler to ingest a repository.</p>
         </div>
       )}
 
       {!loading && profiles.length > 0 && (
         <>
-          {/* Profile selector if multiple profiles */}
           {profiles.length > 1 && (
-            <div className="anim-up flex items-center gap-3 flex-wrap">
+            <div className="reveal-up flex items-center gap-2 flex-wrap">
               {profiles.map((p, i) => (
                 <button
                   key={p.id}
                   onClick={() => setSelectedIdx(i)}
-                  className={`text-[10px] uppercase tracking-widest font-bold px-4 py-2 rounded-lg border transition-all ${
+                  className={`text-xs px-3.5 py-2 rounded-[var(--radius-sm)] border transition-colors ${
                     selectedIdx === i
-                      ? "bg-primary text-white border-primary"
-                      : "text-gray-500 border-white/10 hover:text-white hover:border-white/30"
+                      ? "bg-signal text-[#17130a] border-signal"
+                      : "text-muted border-[var(--line)] hover:text-paper hover:border-[var(--line-strong)]"
                   }`}
                 >
                   {p.github_username || `Profile ${i + 1}`}
@@ -94,15 +84,12 @@ export default function Profile() {
             </div>
           )}
 
-          <div className="anim-up glass-panel p-8 rounded-2xl border border-white/5 relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-[100px] pointer-events-none" />
-            <div className="relative z-10">
-              {parsedProfile ? (
-                <PortfolioRenderer profile={parsedProfile} />
-              ) : (
-                <p className="text-gray-500 text-sm">Could not parse profile data.</p>
-              )}
-            </div>
+          <div className="reveal-up panel p-7">
+            {parsedProfile ? (
+              <PortfolioRenderer profile={parsedProfile} />
+            ) : (
+              <p className="text-sm text-muted">Could not parse profile data.</p>
+            )}
           </div>
         </>
       )}

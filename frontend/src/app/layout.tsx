@@ -1,23 +1,42 @@
-import type { Metadata } from "next";
-import { Space_Grotesk, Space_Mono } from "next/font/google";
-import { ClerkProvider } from '@clerk/nextjs';
+import type { Metadata, Viewport } from "next";
+import { Bricolage_Grotesque, Inter, JetBrains_Mono } from "next/font/google";
+import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
 import AppWrapper from "@/components/AppWrapper";
+import { THEME_BOOT_SCRIPT } from "@/lib/theme";
 
-const spaceGrotesk = Space_Grotesk({
-  variable: "--font-space-grotesk",
+/* Display: architectural grotesque, used only for headlines. */
+const bricolage = Bricolage_Grotesque({
+  variable: "--font-bricolage",
   subsets: ["latin"],
+  display: "swap",
 });
 
-const spaceMono = Space_Mono({
-  variable: "--font-space-mono",
+/* Body: the neutral workhorse everything is actually read in. */
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
-  weight: ["400", "700"],
+  display: "swap",
+});
+
+/* Mono: a face drawn for reading code — this product is about code. */
+const jetbrains = JetBrains_Mono({
+  variable: "--font-jetbrains",
+  subsets: ["latin"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
-  title: "DevLeap AI | Autonomous Recruiter Platform",
-  description: "AI-powered developer portfolios and autonomous recruiter outreach.",
+  title: "DevLeap AI | Your commits already made the case",
+  description:
+    "DevLeap reads your repositories, builds a technical profile from the source itself, matches it against live roles, and drafts pitches that cite the exact code behind every claim.",
+};
+
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: dark)", color: "#0d1117" },
+    { media: "(prefers-color-scheme: light)", color: "#f4f6f9" },
+  ],
 };
 
 export default function RootLayout({
@@ -28,13 +47,16 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${spaceGrotesk.variable} ${spaceMono.variable} h-full antialiased`}
+      suppressHydrationWarning
+      className={`${bricolage.variable} ${inter.variable} ${jetbrains.variable} h-full antialiased`}
     >
+      <head>
+        {/* Applies the saved theme before first paint. */}
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />
+      </head>
       <body className="min-h-full flex flex-col font-sans">
         <ClerkProvider>
-          <AppWrapper>
-            {children}
-          </AppWrapper>
+          <AppWrapper>{children}</AppWrapper>
         </ClerkProvider>
       </body>
     </html>

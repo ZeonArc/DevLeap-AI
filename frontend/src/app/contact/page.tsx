@@ -1,137 +1,147 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import gsap from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
-import Hero3D from "@/components/Hero3D";
+import { useRef, useState } from "react";
+import { useScrollReveal } from "@/lib/useScrollReveal";
+import { submitContactMessage } from "@/lib/api";
+import { getErrorMessage } from "@/lib/errors";
 
-if (typeof window !== "undefined") {
-  gsap.registerPlugin(ScrollTrigger);
-}
+type Status = "idle" | "submitting" | "sent" | "error";
 
 export default function Contact() {
   const containerRef = useRef<HTMLDivElement>(null);
+  useScrollReveal(containerRef);
 
-  useEffect(() => {
-    if (!containerRef.current) return;
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [email, setEmail] = useState("");
+  const [message, setMessage] = useState("");
+  const [status, setStatus] = useState<Status>("idle");
+  const [error, setError] = useState<string | null>(null);
 
-    const ctx = gsap.context(() => {
-      gsap.fromTo(".contact-hero-word",
-        { y: "110%", opacity: 0 },
-        { y: "0%", opacity: 1, duration: 1.6, stagger: 0.12, ease: "expo.out", delay: 0.3 }
-      );
-
-      gsap.fromTo(".contact-hero-sub",
-        { opacity: 0, y: 20 },
-        { opacity: 1, y: 0, duration: 1.2, ease: "power2.out", delay: 1.0 }
-      );
-
-      containerRef.current!.querySelectorAll("[data-reveal]").forEach((el) => {
-        gsap.fromTo(el,
-          { opacity: 0, y: 80, rotateX: -8 },
-          {
-            opacity: 1, y: 0, rotateX: 0, duration: 1.4, ease: "expo.out",
-            scrollTrigger: { trigger: el, start: "top 82%", toggleActions: "play none none reverse" },
-          }
-        );
-      });
-    }, containerRef);
-
-    return () => ctx.revert();
-  }, []);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setStatus("submitting");
+    setError(null);
+    try {
+      await submitContactMessage({ firstName, lastName, email, message });
+      setStatus("sent");
+      setFirstName("");
+      setLastName("");
+      setEmail("");
+      setMessage("");
+    } catch (err) {
+      setStatus("error");
+      setError(getErrorMessage(err, "Couldn't send that. Try again in a moment."));
+    }
+  };
 
   return (
-    <main ref={containerRef} className="relative w-full text-white" style={{ perspective: "1200px" }}>
-      <div className="fixed inset-0 z-[-1] pointer-events-none">
-        <Hero3D />
-      </div>
-
-      {/* Hero */}
-      <section className="min-h-[70vh] flex flex-col items-center justify-center px-6 relative">
-        <div className="absolute bottom-[30%] right-[12%] w-28 h-28 border border-magenta/10 rounded-full glow-shape" />
-
-        <div className="max-w-5xl text-center space-y-6 z-10">
-          <p className="contact-hero-sub text-[10px] tracking-[0.5em] uppercase font-bold text-gray-500">
-            ( contact )
-          </p>
-          <h1 className="overflow-hidden">
-            <span className="contact-hero-word inline-block text-[clamp(3rem,10vw,9rem)] font-black uppercase tracking-tighter leading-[0.9]">
-              Get in
-            </span>
-          </h1>
-          <h1 className="overflow-hidden -mt-4">
-            <span className="contact-hero-word inline-block text-[clamp(3rem,10vw,9rem)] font-black uppercase tracking-tighter leading-[0.9] gradient-text">
-              Touch
-            </span>
-          </h1>
-          <p className="contact-hero-sub text-lg md:text-xl font-light text-gray-400 pt-4 max-w-lg mx-auto">
-            Questions about Enterprise licensing, custom LLM tuning, or partnership opportunities? Reach out below.
-          </p>
-        </div>
+    <main ref={containerRef} className="w-full">
+      <section className="max-w-4xl mx-auto px-6 md:px-8 pt-20 md:pt-28 pb-14 text-center">
+        <p className="reveal-up eyebrow mb-5">( contact )</p>
+        <h1 className="reveal-up font-display text-[clamp(2rem,4.5vw,3.25rem)] leading-tight mb-5">
+          Get in touch.
+        </h1>
+        <p className="reveal-up text-muted text-lg max-w-lg mx-auto">
+          Questions about Enterprise licensing, custom LLM tuning, or a partnership? Send a note below.
+        </p>
       </section>
 
-      {/* Form */}
-      <section className="pb-32 px-8 md:px-24 max-w-3xl mx-auto">
-        <form data-reveal className="glass-panel p-10 md:p-14 rounded-2xl space-y-8 border border-white/[0.06] hover:border-primary/20 transition-colors duration-500">
-          <div className="grid md:grid-cols-2 gap-8">
-            <div className="space-y-3">
-              <label className="text-[10px] tracking-[0.3em] uppercase font-bold text-gray-500">First Name</label>
+      <section className="max-w-2xl mx-auto px-6 md:px-8 pb-20 md:pb-24">
+        {status === "sent" ? (
+          <div className="reveal-up panel p-8 md:p-10 text-center">
+            <p className="badge badge-success mb-4 inline-flex">
+              <span className="dot" />
+              message sent
+            </p>
+            <h2 className="font-display text-2xl mb-2">Thanks — we've got it.</h2>
+            <p className="text-text-dim text-sm">
+              We reply within 24 hours. In the meantime feel free to send another note.
+            </p>
+            <button type="button" className="btn btn-secondary mt-6" onClick={() => setStatus("idle")}>
+              Send another message
+            </button>
+          </div>
+        ) : (
+          <form className="reveal-up panel p-8 md:p-10 space-y-6" onSubmit={handleSubmit}>
+            <div className="grid md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <label className="text-xs text-muted" htmlFor="firstName">First name</label>
+                <input
+                  id="firstName"
+                  type="text"
+                  required
+                  className="field"
+                  placeholder="Ada"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs text-muted" htmlFor="lastName">Last name</label>
+                <input
+                  id="lastName"
+                  type="text"
+                  required
+                  className="field"
+                  placeholder="Lovelace"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs text-muted" htmlFor="email">Email address</label>
               <input
-                type="text"
-                className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl px-5 py-4 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-primary/50 transition-colors"
-                placeholder="John"
+                id="email"
+                type="email"
+                required
+                className="field"
+                placeholder="ada@company.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
               />
             </div>
-            <div className="space-y-3">
-              <label className="text-[10px] tracking-[0.3em] uppercase font-bold text-gray-500">Last Name</label>
-              <input
-                type="text"
-                className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl px-5 py-4 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-primary/50 transition-colors"
-                placeholder="Doe"
+
+            <div className="space-y-2">
+              <label className="text-xs text-muted" htmlFor="message">Message</label>
+              <textarea
+                id="message"
+                rows={5}
+                required
+                className="field resize-none"
+                placeholder="Tell us what you need."
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
               />
             </div>
-          </div>
 
-          <div className="space-y-3">
-            <label className="text-[10px] tracking-[0.3em] uppercase font-bold text-gray-500">Email Address</label>
-            <input
-              type="email"
-              className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl px-5 py-4 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-primary/50 transition-colors"
-              placeholder="john@company.com"
-            />
-          </div>
+            {status === "error" && error && (
+              <p className="text-sm text-red-400" role="alert">{error}</p>
+            )}
 
-          <div className="space-y-3">
-            <label className="text-[10px] tracking-[0.3em] uppercase font-bold text-gray-500">Message</label>
-            <textarea
-              rows={6}
-              className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl px-5 py-4 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-primary/50 transition-colors resize-none"
-              placeholder="Tell us about your needs..."
-            />
-          </div>
-
-          <button
-            type="button"
-            className="hover-button w-full py-4 bg-white hover:bg-primary text-black hover:text-white font-bold tracking-[0.2em] uppercase text-xs rounded-xl transition-colors duration-300"
-          >
-            Send Message
-          </button>
-        </form>
+            <button type="submit" disabled={status === "submitting"} className="btn btn-primary w-full">
+              {status === "submitting" ? "Sending…" : "Send message"}
+            </button>
+          </form>
+        )}
       </section>
 
-      {/* Info Columns */}
-      <section className="py-20 px-8 md:px-24 lg:px-32 border-t border-white/[0.04]">
-        <div className="grid md:grid-cols-3 gap-12 max-w-5xl mx-auto">
-          {[
-            { label: "Email", value: "hello@devleap.ai" },
-            { label: "Location", value: "Remote-first · Global" },
-            { label: "Response Time", value: "Within 24 hours" },
-          ].map(({ label, value }) => (
-            <div key={label} data-reveal className="text-center space-y-3">
-              <p className="text-[10px] tracking-[0.4em] uppercase text-gray-600 font-bold">{label}</p>
-              <p className="text-lg font-medium">{value}</p>
-            </div>
-          ))}
+      <section className="border-t border-[var(--line)]">
+        <div className="max-w-3xl mx-auto px-6 md:px-8 py-16">
+          <div className="grid md:grid-cols-3 gap-10 text-center">
+            {[
+              { label: "Email", value: "hello@devleap.ai" },
+              { label: "Location", value: "Remote-first, global" },
+              { label: "Response time", value: "Within 24 hours" },
+            ].map(({ label, value }) => (
+              <div key={label} className="reveal-up">
+                <p className="eyebrow mb-2">{label}</p>
+                <p className="text-sm">{value}</p>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
     </main>

@@ -1,10 +1,13 @@
 fastapi
 uvicorn
 pydantic
-google-genai
+email-validator
+openai
 python-dotenv
 stripe
 asyncpg
 PyJWT
 cryptography
 httpx
+pytest
+pytest-asyncio

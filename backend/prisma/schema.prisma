@@ -40,3 +40,12 @@ model DraftedPitch {
   created_at    DateTime @default(now())
   user          User     @relation(fields: [user_id], references: [id])
 }
+
+model ContactMessage {
+  id         String   @id @default(uuid())
+  first_name String
+  last_name  String
+  email      String
+  message    String
+  created_at DateTime @default(now())
+}

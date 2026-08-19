@@ -1,105 +1,161 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
-import gsap from "gsap";
-import Image from "next/image";
+import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import { SignInButton, SignUpButton, Show, UserButton } from "@clerk/nextjs";
+import ThemeSlider from "./ThemeSlider";
+
+const LINKS = [
+  { href: "/about", label: "About" },
+  { href: "/pricing", label: "Pricing" },
+  { href: "/contact", label: "Contact" },
+];
 
 export default function Navigation() {
-  const navRef = useRef<HTMLElement>(null);
   const [scrolled, setScrolled] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const pathname = usePathname();
 
   useEffect(() => {
-    if (navRef.current) {
-      gsap.fromTo(navRef.current,
-        { y: -80, opacity: 0 },
-        { y: 0, opacity: 1, duration: 1.2, ease: "expo.out", delay: 1.2 }
-      );
-    }
-
-    const handleScroll = () => setScrolled(window.scrollY > 60);
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
+    const onScroll = () => setScrolled(window.scrollY > 24);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  const links = [
-    { href: "/about", label: "About" },
-    { href: "/pricing", label: "Services" },
-    { href: "/contact", label: "Contact" },
-  ];
+  // Close the mobile menu when the route changes, without the extra render
+  // an effect-based reset would cost.
+  const [lastPath, setLastPath] = useState(pathname);
+  if (pathname !== lastPath) {
+    setLastPath(pathname);
+    setMenuOpen(false);
+  }
 
   return (
-    <nav
-      ref={navRef}
-      className={`fixed top-0 w-full z-50 transition-all duration-700 ${
+    <header
+      className={`fixed top-0 left-0 right-0 z-50 transition-[background-color,border-color,backdrop-filter] duration-300 ${
         scrolled
-          ? "py-4 bg-black/70 backdrop-blur-xl border-b border-white/[0.04] shadow-2xl shadow-black/40"
-          : "py-7 bg-transparent"
+          ? "bg-[color-mix(in_srgb,var(--bg)_82%,transparent)] backdrop-blur-xl border-b border-[var(--line)]"
+          : "bg-transparent border-b border-transparent"
       }`}
     >
-      <div className="max-w-7xl mx-auto px-6 md:px-10 flex justify-between items-center">
-        {/* Logo */}
-        <Link href="/" className="hover-button flex items-center gap-3 group">
-          <Image
-            src="/logo.png"
-            alt="DevLeap AI"
-            width={scrolled ? 24 : 30}
-            height={scrolled ? 24 : 30}
-            className="rounded-md group-hover:scale-110 transition-all duration-300"
-          />
-          <span className={`font-black tracking-[0.2em] uppercase transition-all duration-300 ${scrolled ? "text-[10px]" : "text-xs"}`}>
-            DevLeap AI
-          </span>
+      <div className="max-w-6xl mx-auto px-6 md:px-8 h-16 flex items-center justify-between gap-6">
+        <Link href="/" className="flex items-center gap-2.5 shrink-0" aria-label="DevLeap AI home">
+          <Mark />
+          <span className="font-display text-[1.05rem]">DevLeap</span>
         </Link>
 
-        {/* Links */}
-        <div className="flex items-center gap-8 md:gap-10">
-          {links.map(({ href, label }) => (
-            <Link
-              key={href}
-              href={href}
-              className="hover-button group relative py-1"
-            >
-              <span className="text-[10px] md:text-xs tracking-[0.25em] uppercase font-bold text-gray-400 group-hover:text-white transition-colors duration-300">
+        <nav className="hidden md:flex items-center gap-7" aria-label="Main">
+          {LINKS.map(({ href, label }) => {
+            const active = pathname === href;
+            return (
+              <Link
+                key={href}
+                href={href}
+                className={`text-sm transition-colors ${
+                  active ? "text-text" : "text-text-dim hover:text-text"
+                }`}
+              >
                 {label}
-              </span>
-              <span className="absolute bottom-0 left-0 w-0 h-px bg-primary group-hover:w-full transition-all duration-400 ease-out" />
-            </Link>
-          ))}
-          
-          {/* Clerk Auth Tabs */}
-          <div className="flex items-center gap-4 ml-4">
+              </Link>
+            );
+          })}
+        </nav>
+
+        <div className="flex items-center gap-3">
+          <ThemeSlider />
+
+          <div className="hidden sm:flex items-center gap-2.5">
             <Show when="signed-out">
               <SignInButton mode="modal">
-                <button className="text-[10px] md:text-xs tracking-[0.15em] uppercase font-bold text-gray-400 hover:text-white transition-colors">
-                  Log In
-                </button>
+                <button className="btn btn-ghost px-3">Log in</button>
               </SignInButton>
               <SignUpButton mode="modal">
-                <button className="text-[10px] md:text-xs tracking-[0.15em] uppercase font-bold bg-primary hover:bg-primary-hover text-white px-4 py-2 rounded-sm transition-colors">
-                  Sign Up
-                </button>
+                <button className="btn btn-primary">Start a review</button>
               </SignUpButton>
             </Show>
             <Show when="signed-in">
-              <Link
-                href="/dashboard"
-                className="text-[10px] md:text-xs tracking-[0.15em] uppercase font-bold text-primary hover:text-primary-hover mr-4 transition-colors"
-              >
+              <Link href="/dashboard" className="text-sm text-accent hover:opacity-80 transition-opacity mr-1">
                 Dashboard
               </Link>
-              <UserButton 
+              <UserButton
                 appearance={{
                   elements: {
-                    userButtonAvatarBox: "w-8 h-8 rounded-sm border border-white/20",
-                  }
+                    userButtonAvatarBox: "w-8 h-8 rounded-md border border-[var(--line)]",
+                  },
                 }}
               />
             </Show>
           </div>
+
+          <button
+            type="button"
+            onClick={() => setMenuOpen((v) => !v)}
+            className="md:hidden btn btn-ghost px-2 py-2"
+            aria-expanded={menuOpen}
+            aria-controls="mobile-menu"
+            aria-label={menuOpen ? "Close menu" : "Open menu"}
+          >
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              {menuOpen ? (
+                <path d="M5 5l10 10M15 5L5 15" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+              ) : (
+                <path d="M3 6h14M3 10h14M3 14h14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+              )}
+            </svg>
+          </button>
         </div>
       </div>
-    </nav>
+
+      {menuOpen && (
+        <div
+          id="mobile-menu"
+          className="md:hidden border-t border-[var(--line)] bg-[var(--surface)] px-6 py-5 space-y-4"
+        >
+          <nav className="flex flex-col gap-1" aria-label="Mobile">
+            {LINKS.map(({ href, label }) => (
+              <Link
+                key={href}
+                href={href}
+                className="py-2 text-sm text-text-dim hover:text-text transition-colors"
+              >
+                {label}
+              </Link>
+            ))}
+          </nav>
+
+          <div className="hairline" />
+
+          <div className="flex flex-col gap-2.5">
+            <Show when="signed-out">
+              <SignInButton mode="modal">
+                <button className="btn btn-secondary w-full">Log in</button>
+              </SignInButton>
+              <SignUpButton mode="modal">
+                <button className="btn btn-primary w-full">Start a review</button>
+              </SignUpButton>
+            </Show>
+            <Show when="signed-in">
+              <Link href="/dashboard" className="btn btn-primary w-full">
+                Dashboard
+              </Link>
+            </Show>
+          </div>
+        </div>
+      )}
+    </header>
+  );
+}
+
+/* Two brackets closing on a line — a reviewed change, reduced to a mark. */
+function Mark() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <rect x="1" y="1" width="22" height="22" rx="6" fill="var(--accent-wash)" stroke="var(--line-strong)" />
+      <path d="M9 8.5 5.5 12 9 15.5" stroke="var(--accent)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M15 8.5 18.5 12 15 15.5" stroke="var(--accent)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M12 7.5v9" stroke="var(--alt)" strokeWidth="1.6" strokeLinecap="round" />
+    </svg>
   );
 }
