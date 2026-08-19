@@ -10,9 +10,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-# Generate Prisma Client
-RUN prisma generate
-
 EXPOSE 8000
 
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Render (and most PaaS hosts) inject $PORT at runtime and expect the
+# process to bind to it; 8000 is just the local/EXPOSE fallback.
+CMD exec uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}
